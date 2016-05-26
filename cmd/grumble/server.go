@@ -44,6 +44,17 @@ const (
 	StateClientDead
 )
 
+var (
+   ActivePort = ""
+)
+
+func init() {
+    ActivePort = os.Getenv('GRUMBLE_PORT');
+    if ActivePort = "" {
+        ActivePort == DefaultPort
+    }
+}
+
 type KeyValuePair struct {
 	Key   string
 	Value string
@@ -1288,7 +1299,7 @@ func (server *Server) cleanPerLaunchData() {
 func (server *Server) Port() int {
 	port := server.cfg.IntValue("Port")
 	if port == 0 {
-		return DefaultPort + int(server.Id) - 1
+		return ActivePort + int(server.Id) - 1
 	}
 	return port
 }
