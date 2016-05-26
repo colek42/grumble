@@ -54,15 +54,25 @@ type args struct {
 }
 
 func defaultDataDir() string {
-	dirname := ".grumble"
-	if runtime.GOOS == "windows" {
-		dirname = "grumble"
+
+	path := os.Getenv("GRUMBLE_DATA")
+	if path == "" {
+		path = os.Getenv("HOME")
 	}
-	return filepath.Join(os.Getenv("HOME"), dirname)
+	dataPath := filepath.Join(path, ".grumble")
+	os.MkdirAll(dataPath, 0777)
+	return dataPath
 }
 
 func defaultLogPath() string {
-	return filepath.Join(defaultDataDir(), "grumble.log")
+	path := os.Getenv("GRUMBLE_LOG")
+	if path == "" {
+		path = os.Getenv("HOME")
+	}
+
+	dataPath := filepath.Join(path, ".grumble_logs")
+	os.MkdirAll(dataPath, 0777)
+	return dataPath
 }
 
 func Usage() {

@@ -190,7 +190,7 @@ func (client *Client) disconnect(kicked bool) {
 			close(client.clientReady)
 		}
 
-		client.Printf("Disconnected")
+		client.Printf("Internal Disconnect")
 		client.conn.Close()
 
 		client.server.updateCodecVersions(nil)
@@ -199,11 +199,13 @@ func (client *Client) disconnect(kicked bool) {
 
 // Disconnect a client (client requested or server shutdown)
 func (client *Client) Disconnect() {
+	client.Printf("Client Disconnected By Server: Requested or Shutdown")
 	client.disconnect(false)
 }
 
 // Disconnect a client (kick/ban)
 func (client *Client) ForceDisconnect() {
+	client.Printf("Client Disconnected By Server: Kick/Ban")
 	client.disconnect(true)
 }
 
@@ -226,6 +228,7 @@ func (client *Client) RejectAuth(rejectType mumbleproto.Reject_RejectType, reaso
 		Reason: reasonString,
 	})
 
+	client.Printf("Client Disconnected By Server: " + reason)
 	client.ForceDisconnect()
 }
 

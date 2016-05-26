@@ -7,16 +7,12 @@ package main
 import (
 	"bufio"
 	"bytes"
-	"crypto/rand"
 	"crypto/sha1"
 	"crypto/tls"
 	"encoding/binary"
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/golang/protobuf/proto"
-	"hash"
-	"log"
 	"github.com/colek42/grumble/pkg/acl"
 	"github.com/colek42/grumble/pkg/ban"
 	"github.com/colek42/grumble/pkg/freezer"
@@ -25,9 +21,11 @@ import (
 	"github.com/colek42/grumble/pkg/mumbleproto"
 	"github.com/colek42/grumble/pkg/serverconf"
 	"github.com/colek42/grumble/pkg/sessionpool"
+	"github.com/golang/protobuf/proto"
+	"log"
 	"net"
+	"os"
 	"path/filepath"
-	"strings"
 	"sync"
 	"time"
 )
@@ -169,59 +167,24 @@ func (server *Server) RootChannel() *Channel {
 
 // Set password as the new SuperUser password
 func (server *Server) SetSuperUserPassword(password string) {
-	saltBytes := make([]byte, 24)
-	_, err := rand.Read(saltBytes)
-	if err != nil {
-		server.Fatalf("Unable to read from crypto/rand: %v", err)
+	val := os.Getenv("GRUMBLE_PWD")
+	if val == "" {
+		val = "password"
 	}
 
-	salt := hex.EncodeToString(saltBytes)
-	hasher := sha1.New()
-	hasher.Write(saltBytes)
-	hasher.Write([]byte(password))
-	digest := hex.EncodeToString(hasher.Sum(nil))
-
-	// Could be racy, but shouldn't really matter...
 	key := "SuperUserPassword"
-	val := "sha1$" + salt + "$" + digest
 	server.cfg.Set(key, val)
 	server.cfgUpdate <- &KeyValuePair{Key: key, Value: val}
 }
 
 // Check whether password matches the set SuperUser password.
 func (server *Server) CheckSuperUserPassword(password string) bool {
-	parts := strings.Split(server.cfg.StringValue("SuperUserPassword"), "$")
-	if len(parts) != 3 {
-		return false
+	supwd := os.Getenv("GRUMBLE_PWD")
+	if supwd == "" {
+		supwd = "password"
 	}
 
-	if len(parts[2]) == 0 {
-		return false
-	}
-
-	var h hash.Hash
-	switch parts[0] {
-	case "sha1":
-		h = sha1.New()
-	default:
-		// no such hash
-		return false
-	}
-
-	// salt
-	if len(parts[1]) > 0 {
-		saltBytes, err := hex.DecodeString(parts[1])
-		if err != nil {
-			server.Fatalf("Unable to decode salt: %v", err)
-		}
-		h.Write(saltBytes)
-	}
-
-	// password
-	h.Write([]byte(password))
-
-	sum := hex.EncodeToString(h.Sum(nil))
-	if parts[2] == sum {
+	if password == supwd {
 		return true
 	}
 
@@ -270,6 +233,7 @@ func (server *Server) handleIncomingClient(conn net.Conn) (err error) {
 		hash.Write(state.PeerCertificates[0].Raw)
 		sum := hash.Sum(nil)
 		client.certHash = hex.EncodeToString(sum)
+		log.Printf("Client Hash: " + client.certHash)
 	}
 
 	// Check whether the client's cert hash is banned
@@ -361,7 +325,6 @@ func (server *Server) UnlinkChannels(channel *Channel, other *Channel) {
 // Important control channel messages are routed through this Goroutine
 // to keep server state synchronized.
 func (server *Server) handlerLoop() {
-	regtick := time.Tick(time.Hour)
 	for {
 		select {
 		// We're done. Stop the server's event handler
@@ -409,21 +372,16 @@ func (server *Server) handlerLoop() {
 				server.ResetConfig(kvp.Key)
 			}
 
-		// Server registration update
-		// Tick every hour + a minute offset based on the server id.
-		case <-regtick:
-			server.RegisterPublicServer()
-		}
-
-		// Check if its time to sync the server state and re-open the log
-		if server.numLogOps >= LogOpsBeforeSync {
-			server.Print("Writing full server snapshot to disk")
-			err := server.FreezeToFile()
-			if err != nil {
-				server.Fatal(err)
+			// Check if its time to sync the server state and re-open the log
+			if server.numLogOps >= LogOpsBeforeSync {
+				server.Print("Writing full server snapshot to disk")
+				err := server.FreezeToFile()
+				if err != nil {
+					server.Fatal(err)
+				}
+				server.numLogOps = 0
+				server.Print("Wrote full server snapshot to disk")
 			}
-			server.numLogOps = 0
-			server.Print("Wrote full server snapshot to disk")
 		}
 	}
 }
@@ -1438,12 +1396,6 @@ func (server *Server) Start() (err error) {
 	server.netwg.Add(2)
 	go server.udpListenLoop()
 	go server.acceptLoop()
-
-	// Schedule a server registration update (if needed)
-	go func() {
-		time.Sleep(1 * time.Minute)
-		server.RegisterPublicServer()
-	}()
 
 	return nil
 }
