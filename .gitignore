@@ -23,4 +23,4 @@ build.out
 test.out
 goinstall.log
 *.sqlite
-build/
+

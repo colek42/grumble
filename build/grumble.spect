@@ -1,0 +1,132 @@
+#SSE Build Script
+
+%define		__spec_install_post	%{nil}
+%define		debug_package		%{nil}
+%define		__os_install_post	%{_dbpath}/brp-compress
+
+Summary: Grumble Server
+Name: grumble
+Version: 1.0
+Release: {{RELEASE}}
+Group: Applications/Novetta
+License: GPR
+BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
+Requires: kerbproxy
+
+%description
+%{summary}
+
+%prep
+
+%build
+echo "	Grumble VOIP Server"
+echo "	Begin Build Phase"
+#set +x
+rm -rf %{_builddir}/%{name}
+mkdir -p %{_builddir}/%{name}/bin
+mkdir -p %{_builddir}/%{name}/conf
+mkdir -p %{_builddir}/%{name}/setup
+mkdir -p %{_builddir}/%{name}/etc/logrotate.d
+mkdir -p %{_builddir}/%{name}/etc/security/limits.d
+mkdir -p %{_builddir}/%{name}/etc/init.d
+mkdir -p %{_builddir}/%{name}/etc/kerbproxy/conf.d
+mkdir -p %{_builddir}/%{name}/public
+
+GRUMBLE="$GOPATH/src/github.com/colek42/grumble"
+GRUMBLEBUILD="$GOPATH/src/github.com/colek42/grumble/build"
+
+# Binary Modules
+MODULES="
+github.com/Novetta/colek42/grumble/cmd/grumble
+"
+
+for module in $MODULES; do
+	cd "$GOPATH/src/$module"
+	go get -d $module
+	binname=$(basename $module)
+	echo "	Building $binname"
+	go build -o %{_builddir}/%{name}/bin/$binname $module
+	echo "	Done Building $binname"
+done
+
+mv %{_builddir}/%{name}/bin/grumble %{_builddir}/%{name}/bin/grumble
+
+#Init Script
+cp -r $SSEBUILD/etc %{_builddir}/%{name}/
+
+
+#Config
+cp $GRUMBLE/conf/* %{_builddir}/%{name}/conf/
+
+echo "	Done Build Phase"
+
+#Init Scripts
+
+%install
+echo "	Begin Install Phase"
+set -x
+
+rm -rf %{buildroot}
+echo "	Making Directories"
+mkdir -p %{buildroot}/etc/logrotate.d/
+mkdir -p %{buildroot}/etc/security/limits.d/
+mkdir -p %{buildroot}/etc/init.d/
+mkdir -p %{buildroot}/opt/grumble/bin
+mkdir -p %{buildroot}/opt/grumble/conf
+mkdir -p %{buildroot}/opt/grumble/setup
+
+echo "	Copying files"
+cp -r %{_builddir}/%{name}/bin/* %{buildroot}/opt/grumble/bin/
+cp -r %{_builddir}/%{name}/conf/* %{buildroot}/opt/grumble/conf/
+cp -r %{_builddir}/%{name}/setup/* %{buildroot}/opt/grumble/setup/
+cp -r %{_builddir}/%{name}/etc/logrotate.d/grumble* %{buildroot}/etc/logrotate.d/
+cp -r %{_builddir}/%{name}/etc/security/limits.d/grumble* %{buildroot}/etc/security/limits.d/
+cp %{_builddir}/%{name}/etc/init.d/grumble* %{buildroot}/etc/init.d/
+
+echo "	Done Install Phase"
+
+%clean
+rm -rf %{buildroot}
+rm -rf %{_builddir}/{%name}
+echo "	Cleaning Build Directories"
+
+%pre
+id sse &> /dev/null || /usr/sbin/useradd -r -g users sse
+/sbin/chkconfig --del grumble &> /dev/null || true
+
+%post
+echo "	Begin POST Install Phase"
+set +x
+source /opt/grumble/conf/grumble.env
+
+#Re-add init scripts to reset the boot order
+/sbin/chkconfig --add sse
+/sbin/service sse restart
+echo "	Done POST Install Phase"
+
+%preun
+echo "	Begin PREUN Phase"
+#First arguments is zero if we are uninstalling
+if [ $1 -eq 0 ]; then
+	/sbin/service grumble stop
+fi
+echo "	Done preun Phase"
+
+%files
+%defattr(644, sse, users, 755)
+%dir /opt/sse
+%attr(755, root, root) /etc/init.d/*
+/etc/kerbproxy/conf.d/sse.yaml
+%config %attr(-, root, root) /etc/logrotate.d/grumblelog.conf
+%config %attr(-, root, root) /etc/security/limits.d/sselimits.conf
+%dir /opt/grumble/conf
+%config(noreplace) /opt/grumble/conf/*
+%ghost %attr(644, root, root) /var/log/grumble/grumble.log
+%attr(755,-,-) /opt/grumble/bin
+/opt/grumble/public
+/opt/grumble/setup
+
+
+%changelog
+* Fri May 26 2016 Nicholas Kennedy <nkennedy@novetta.com> 1.0
+-First Build

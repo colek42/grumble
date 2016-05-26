@@ -1,0 +1,72 @@
+#!/bin/sh
+
+# chkconfig: 35 97 9
+
+### BEGIN INIT INFO
+# Provides: sse
+# Required-Start:    $remote_fs $syslog
+# Required-Stop:     $remote_fs $syslog
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Start daemon at boot time
+# Description:       Enable service provided by daemon.
+### END INIT INFO
+
+source /etc/init.d/functions
+source /opt/grumble/conf/sse.env
+
+svc="grumble"
+GRUMBLE="/opt/grumble"
+dir="${GRUMBLE}"
+user="grumble"
+cmd="${GRUMBLE}/bin/${svc}"
+stdout_log="/var/log/${svc}/${svc}.log"
+
+start() {
+    echo -n "Starting ${svc}: "
+    cd ${dir}
+    pidofproc ${svc} > /dev/null && echo -n "already running" && failure && echo && exit 1
+    /bin/su -m ${user} -c "${cmd}" &>> "${stdout_log}" &
+    /bin/sleep 1
+    if kill -0 $(pidofproc ${svc}) 2>/dev/null; then
+	    success
+    else
+	    failure
+    fi
+
+    echo
+}
+
+case "$1" in
+    start)
+        start
+        ;;
+    stop)
+        echo -n "Shutting down ${svc}: "
+        pid=$(pidofproc ${svc})
+        if [ $? -ne 0 ]; then
+            # LSB says stop on stopped should be success
+            success
+        else
+            kill ${pid}
+            success
+        fi
+        pkill IngestPackage
+        echo
+        ;;
+    restart)
+        $0 stop
+        sleep 1
+        $0 start
+        ;;
+    status)
+        status ${svc}
+        RETVAL=$?
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|restart|status}"
+        exit 1
+        ;;
+esac
+
+exit $RETVAL
