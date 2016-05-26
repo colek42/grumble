@@ -68,6 +68,7 @@ mkdir -p %{buildroot}/etc/init.d/
 mkdir -p %{buildroot}/etc/kerbproxy/conf.d/
 mkdir -p %{buildroot}/opt/grumble/bin
 mkdir -p %{buildroot}/opt/grumble/conf
+mkdir -p %{buildroot}/var/log/grumble
 
 echo "	Copying files"
 cp -r %{_builddir}/%{name}/bin/* %{buildroot}/opt/grumble/bin/
@@ -110,10 +111,11 @@ echo "	Done preun Phase"
 %dir /opt/grumble
 %attr(755, root, root) /etc/init.d/*
 /etc/kerbproxy/conf.d/grumble.yaml
+%attr(755, grumble, users) /var/log/grumble
 %config %attr(-, root, root) /etc/logrotate.d/grumblelog.conf
 %dir /opt/grumble/conf
 %config(noreplace) /opt/grumble/conf/*
-%ghost %attr(644, root, root) /var/log/grumble/grumble.log
+%ghost %attr(644, grumble, grumble) /var/log/grumble/grumble.log
 %attr(755,-,-) /opt/grumble/bin
 
 

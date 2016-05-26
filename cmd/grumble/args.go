@@ -70,10 +70,10 @@ func defaultLogPath() string {
 		path = os.Getenv("HOME")
 	}
 
-	dataPath := filepath.Join(path, ".grumble_logs")
-	os.MkdirAll(dataPath, 0777)
-	ret := filepath.Join(dataPath, "grumble_log")
-	return ret
+    //os.MkdirAll(path, 0777)
+	logPath := filepath.Join(path, "grumble.log")
+
+	return logPath
 }
 
 func Usage() {
