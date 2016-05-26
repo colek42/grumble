@@ -6,7 +6,7 @@ package main
 
 import (
 	"encoding/hex"
-	"mumble.info/grumble/pkg/acl"
+	"github.com/colek42/grumble/pkg/acl"
 )
 
 // A Mumble channel
