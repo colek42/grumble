@@ -1,0 +1,6 @@
+displayName:  Grumble
+service:    grumble
+target:      
+  - http://localhost:6464/
+  icon: images/SSE-Cypher1.png
+  description: Grumble Server

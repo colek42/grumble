@@ -25,19 +25,16 @@ echo "	Begin Build Phase"
 rm -rf %{_builddir}/%{name}
 mkdir -p %{_builddir}/%{name}/bin
 mkdir -p %{_builddir}/%{name}/conf
-mkdir -p %{_builddir}/%{name}/setup
 mkdir -p %{_builddir}/%{name}/etc/logrotate.d
-mkdir -p %{_builddir}/%{name}/etc/security/limits.d
 mkdir -p %{_builddir}/%{name}/etc/init.d
 mkdir -p %{_builddir}/%{name}/etc/kerbproxy/conf.d
-mkdir -p %{_builddir}/%{name}/public
 
 GRUMBLE="$GOPATH/src/github.com/colek42/grumble"
 GRUMBLEBUILD="$GOPATH/src/github.com/colek42/grumble/build"
 
 # Binary Modules
 MODULES="
-github.com/Novetta/colek42/grumble/cmd/grumble
+github.com/colek42/grumble/cmd/grumble
 "
 
 for module in $MODULES; do
@@ -49,10 +46,8 @@ for module in $MODULES; do
 	echo "	Done Building $binname"
 done
 
-mv %{_builddir}/%{name}/bin/grumble %{_builddir}/%{name}/bin/grumble
-
 #Init Script
-cp -r $SSEBUILD/etc %{_builddir}/%{name}/
+cp -r $GRUMBLEBUILD/etc %{_builddir}/%{name}/
 
 
 #Config
@@ -69,19 +64,17 @@ set -x
 rm -rf %{buildroot}
 echo "	Making Directories"
 mkdir -p %{buildroot}/etc/logrotate.d/
-mkdir -p %{buildroot}/etc/security/limits.d/
 mkdir -p %{buildroot}/etc/init.d/
+mkdir -p %{buildroot}/etc/kerbproxy/conf.d/
 mkdir -p %{buildroot}/opt/grumble/bin
 mkdir -p %{buildroot}/opt/grumble/conf
-mkdir -p %{buildroot}/opt/grumble/setup
 
 echo "	Copying files"
 cp -r %{_builddir}/%{name}/bin/* %{buildroot}/opt/grumble/bin/
 cp -r %{_builddir}/%{name}/conf/* %{buildroot}/opt/grumble/conf/
-cp -r %{_builddir}/%{name}/setup/* %{buildroot}/opt/grumble/setup/
 cp -r %{_builddir}/%{name}/etc/logrotate.d/grumble* %{buildroot}/etc/logrotate.d/
-cp -r %{_builddir}/%{name}/etc/security/limits.d/grumble* %{buildroot}/etc/security/limits.d/
 cp %{_builddir}/%{name}/etc/init.d/grumble* %{buildroot}/etc/init.d/
+cp %{_builddir}/%{name}/etc/kerbproxy/conf.d/grumble.yaml %{buildroot}/etc/kerbproxy/conf.d/
 
 echo "	Done Install Phase"
 
@@ -91,7 +84,7 @@ rm -rf %{_builddir}/{%name}
 echo "	Cleaning Build Directories"
 
 %pre
-id sse &> /dev/null || /usr/sbin/useradd -r -g users sse
+id grumble &> /dev/null || /usr/sbin/useradd -r -g users grumble
 /sbin/chkconfig --del grumble &> /dev/null || true
 
 %post
@@ -100,8 +93,8 @@ set +x
 source /opt/grumble/conf/grumble.env
 
 #Re-add init scripts to reset the boot order
-/sbin/chkconfig --add sse
-/sbin/service sse restart
+/sbin/chkconfig --add grumble
+/sbin/service grumble restart
 echo "	Done POST Install Phase"
 
 %preun
@@ -113,18 +106,15 @@ fi
 echo "	Done preun Phase"
 
 %files
-%defattr(644, sse, users, 755)
-%dir /opt/sse
+%defattr(644, grumble, users, 755)
+%dir /opt/grumble
 %attr(755, root, root) /etc/init.d/*
-/etc/kerbproxy/conf.d/sse.yaml
+/etc/kerbproxy/conf.d/grumble.yaml
 %config %attr(-, root, root) /etc/logrotate.d/grumblelog.conf
-%config %attr(-, root, root) /etc/security/limits.d/sselimits.conf
 %dir /opt/grumble/conf
 %config(noreplace) /opt/grumble/conf/*
 %ghost %attr(644, root, root) /var/log/grumble/grumble.log
 %attr(755,-,-) /opt/grumble/bin
-/opt/grumble/public
-/opt/grumble/setup
 
 
 %changelog
