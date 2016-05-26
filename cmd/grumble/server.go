@@ -40,6 +40,7 @@ const (
 	StateClientConnected = iota
 	StateServerSentVersion
 	StateClientSentVersion
+	StateClientAuthenticated
 	StateClientReady
 	StateClientDead
 )
@@ -290,7 +291,7 @@ func (server *Server) RemoveClient(client *Client, kicked bool) {
 	// If the user was not kicked, broadcast a UserRemove message.
 	// If the user is disconnect via a kick, the UserRemove message has already been sent
 	// at this point.
-	if !kicked {
+	if !kicked && client.state > StateClientAuthenticated {
 		err := server.broadcastProtoMessage(&mumbleproto.UserRemove{
 			Session: proto.Uint32(client.Session()),
 		})
@@ -422,6 +423,10 @@ func (server *Server) handleAuthenticate(client *Client, msg *Message) {
 	client.tokens = auth.Tokens
 	server.ClearCaches()
 
+	if client.state >= StateClientAuthenticated {
+		return
+	}
+
 	// Did we get a username?
 	if auth.Username == nil || len(*auth.Username) == 0 {
 		client.RejectAuth(mumbleproto.Reject_InvalidUsername, "Please specify a username to log in")
@@ -491,6 +496,7 @@ func (server *Server) handleAuthenticate(client *Client, msg *Message) {
 	client.codecs = auth.CeltVersions
 	client.opus = auth.GetOpus()
 
+	client.state = StateClientAuthenticated
 	server.clientAuthenticated <- client
 }
 
@@ -835,6 +841,9 @@ type ClientPredicate func(client *Client) bool
 func (server *Server) broadcastProtoMessageWithPredicate(msg interface{}, clientcheck ClientPredicate) error {
 	for _, client := range server.clients {
 		if !clientcheck(client) {
+			continue
+		}
+		if client.state < StateClientAuthenticated {
 			continue
 		}
 		err := client.sendMessage(msg)
