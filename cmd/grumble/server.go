@@ -26,6 +26,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"strconv"
 	"sync"
 	"time"
 )
@@ -46,13 +47,18 @@ const (
 )
 
 var (
-	ActivePort = ""
+	ActivePort = DefaultPort
 )
 
 func init() {
-	ActivePort = os.Getenv("GRUMBLE_PORT")
-	if ActivePort == "" {
-		ActivePort = DefaultPort
+	portStr := os.Getenv("GRUMBLE_PORT")
+	ActivePort = DefaultPort
+	if portStr != "" {
+		intPort, err := strconv.Atoi(portStr)
+		if err != nil {
+			log.Printf("Default Port could not convert %s: %+v", portStr, err)
+		}
+		ActivePort = intPort
 	}
 }
 
