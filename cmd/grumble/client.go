@@ -186,8 +186,14 @@ func (client *Client) disconnect(kicked bool) {
 		//
 		// In case of a premature disconnect, close the channel so the
 		// receiver routine can exit correctly.
-		if client.state == StateClientSentVersion || client.state == StateClientAuthenticated {
-			close(client.clientReady)
+		if client.state == StateClientSentVersion {
+			client.Printf("Client Line 190")
+			//close(client.clientReady)
+		}
+
+		if client.state == StateClientAuthenticated {
+			//close(client.clientReady)
+			client.Printf("Client Line 195")
 		}
 
 		client.Printf("Internal Disconnect")
