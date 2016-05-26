@@ -8,7 +8,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/colek42/pkg/logtarget"
+	"github.com/colek42/grumble/pkg/logtarget"
 	"os"
 	"os/signal"
 	"syscall"

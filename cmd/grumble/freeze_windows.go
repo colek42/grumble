@@ -7,7 +7,7 @@ package main
 import (
 	"github.com/golang/protobuf/proto"
 	"io/ioutil"
-	"github.com/colek42/pkg/replacefile"
+	"github.com/colek42/grumble/pkg/replacefile"
 	"path/filepath"
 	"strconv"
 )

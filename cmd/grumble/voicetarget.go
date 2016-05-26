@@ -4,7 +4,7 @@
 
 package main
 
-import "github.com/colek42/pkg/acl"
+import "github.com/colek42/grumble/pkg/acl"
 
 // A VoiceTarget holds information about a single
 // VoiceTarget entry of a Client.

@@ -7,7 +7,7 @@ package cryptstate
 import (
 	"crypto/aes"
 	"crypto/cipher"
-	"github.com/colek42/pkg/cryptstate/ocb2"
+	"github.com/colek42/grumble/pkg/cryptstate/ocb2"
 )
 
 // ocb2Mode implements the OCB2-AES128 CryptoMode
