@@ -45,14 +45,14 @@ const (
 )
 
 var (
-   ActivePort = ""
+	ActivePort = ""
 )
 
 func init() {
-    ActivePort = os.Getenv('GRUMBLE_PORT');
-    if ActivePort = "" {
-        ActivePort == DefaultPort
-    }
+	ActivePort = os.Getenv("GRUMBLE_PORT")
+	if ActivePort == "" {
+		ActivePort = DefaultPort
+	}
 }
 
 type KeyValuePair struct {
