@@ -13,7 +13,7 @@
 ### END INIT INFO
 
 source /etc/init.d/functions
-source /opt/grumble/conf/sse.env
+source /opt/grumble/conf/grumble.env
 
 svc="grumble"
 GRUMBLE="/opt/grumble"
