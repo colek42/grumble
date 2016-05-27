@@ -78,6 +78,7 @@ cp %{_builddir}/%{name}/etc/init.d/grumble* %{buildroot}/etc/init.d/
 cp %{_builddir}/%{name}/etc/kerbproxy/conf.d/grumble.yaml %{buildroot}/etc/kerbproxy/conf.d/
 
 echo "	Done Install Phase"
+touch %{buildroot}/var/log/grumble/grumble.log
 
 %clean
 rm -rf %{buildroot}
@@ -111,11 +112,11 @@ echo "	Done preun Phase"
 %dir /opt/grumble
 %attr(755, root, root) /etc/init.d/*
 /etc/kerbproxy/conf.d/grumble.yaml
-%attr(755, grumble, users) /var/log/grumble
 %config %attr(-, root, root) /etc/logrotate.d/grumblelog.conf
 %dir /opt/grumble/conf
 %config(noreplace) /opt/grumble/conf/*
-%ghost %attr(644, grumble, grumble) /var/log/grumble/grumble.log
+%attr(755, grumble, users) /var/log/grumble
+%attr(644, grumble, grumble) /var/log/grumble/grumble.log
 %attr(755,-,-) /opt/grumble/bin
 
 
