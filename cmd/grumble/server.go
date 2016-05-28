@@ -649,22 +649,77 @@ func (server *Server) finishAuthenticate(client *Client) {
 }
 
 func (server *Server) updateCodecVersions(connecting *Client) {
+	codecusers := map[int32]int{}
 	var (
-		winner int32
-		txtMsg *mumbleproto.TextMessage = &mumbleproto.TextMessage{
+		winner     int32
+		count      int
+		users      int
+		opus       int
+		enableOpus bool
+		txtMsg     *mumbleproto.TextMessage = &mumbleproto.TextMessage{
 			Message: proto.String("<strong>WARNING:</strong> Your client doesn't support the Opus codec the server is switching to, you won't be able to talk or hear anyone. Please upgrade to a client with Opus support."),
 		}
 	)
 
+	for _, client := range server.clients {
+		users++
+		if client.opus {
+			opus++
+		}
+		for _, codec := range client.codecs {
+			codecusers[codec] += 1
+		}
+	}
+
+	for codec, users := range codecusers {
+		if users > count {
+			count = users
+			winner = codec
+		}
+		if users == count && codec > winner {
+			winner = codec
+		}
+	}
+
+	var current int32
+	if server.PreferAlphaCodec {
+		current = server.AlphaCodec
+	} else {
+		current = server.BetaCodec
+	}
+
+	enableOpus = users == opus
+
+	if winner != current {
+		if winner == CeltCompatBitstream {
+			server.PreferAlphaCodec = true
+		} else {
+			server.PreferAlphaCodec = !server.PreferAlphaCodec
+		}
+
+		if server.PreferAlphaCodec {
+			server.AlphaCodec = winner
+		} else {
+			server.BetaCodec = winner
+		}
+	} else if server.Opus == enableOpus {
+		if server.Opus && connecting != nil && !connecting.opus {
+			txtMsg.Session = []uint32{connecting.Session()}
+			connecting.sendMessage(txtMsg)
+		}
+		return
+	}
+
+	server.Opus = enableOpus
+
 	server.PreferAlphaCodec = true
-	server.AlphaCodec = winner
 	server.Opus = false
 
 	err := server.broadcastProtoMessage(&mumbleproto.CodecVersion{
 		Alpha:       proto.Int32(server.AlphaCodec),
 		Beta:        proto.Int32(server.BetaCodec),
 		PreferAlpha: proto.Bool(server.PreferAlphaCodec),
-		Opus:        proto.Bool(false),
+		Opus:        proto.Bool(server.Opus),
 	})
 	if err != nil {
 		server.Printf("Unable to broadcast.")
