@@ -2,8 +2,8 @@
 set -e
 set -u
 
-NOVETTA_PATH=$HOME/gocode/src/github.com/Novetta
-GRUMBLE=$HOME/gocode/src/github.com/colek42/grumble
+NOVETTA_PATH=$GOPATH/src/github.com/Novetta
+GRUMBLE=$GOPATH/src/github.com/colek42/grumble
 
 sudo rm -rf $HOME/rpmbuild
 mkdir -p $HOME/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
