@@ -7,26 +7,27 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"crypto/rand"
 	"crypto/sha1"
 	"crypto/tls"
 	"encoding/binary"
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/colek42/grumble/pkg/acl"
-	"github.com/colek42/grumble/pkg/ban"
-	"github.com/colek42/grumble/pkg/freezer"
-	"github.com/colek42/grumble/pkg/htmlfilter"
-	"github.com/colek42/grumble/pkg/logtarget"
-	"github.com/colek42/grumble/pkg/mumbleproto"
-	"github.com/colek42/grumble/pkg/serverconf"
-	"github.com/colek42/grumble/pkg/sessionpool"
 	"github.com/golang/protobuf/proto"
+	"hash"
 	"log"
+	"mumble.info/grumble/pkg/acl"
+	"mumble.info/grumble/pkg/ban"
+	"mumble.info/grumble/pkg/freezer"
+	"mumble.info/grumble/pkg/htmlfilter"
+	"mumble.info/grumble/pkg/logtarget"
+	"mumble.info/grumble/pkg/mumbleproto"
+	"mumble.info/grumble/pkg/serverconf"
+	"mumble.info/grumble/pkg/sessionpool"
 	"net"
-	"os"
 	"path/filepath"
-	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
@@ -45,22 +46,6 @@ const (
 	StateClientReady
 	StateClientDead
 )
-
-var (
-	ActivePort = DefaultPort
-)
-
-func init() {
-	portStr := os.Getenv("GRUMBLE_PORT")
-	ActivePort = DefaultPort
-	if portStr != "" {
-		intPort, err := strconv.Atoi(portStr)
-		if err != nil {
-			log.Printf("Default Port could not convert %s: %+v", portStr, err)
-		}
-		ActivePort = intPort
-	}
-}
 
 type KeyValuePair struct {
 	Key   string
@@ -184,24 +169,59 @@ func (server *Server) RootChannel() *Channel {
 
 // Set password as the new SuperUser password
 func (server *Server) SetSuperUserPassword(password string) {
-	val := os.Getenv("GRUMBLE_PWD")
-	if val == "" {
-		val = "password"
+	saltBytes := make([]byte, 24)
+	_, err := rand.Read(saltBytes)
+	if err != nil {
+		server.Fatalf("Unable to read from crypto/rand: %v", err)
 	}
 
+	salt := hex.EncodeToString(saltBytes)
+	hasher := sha1.New()
+	hasher.Write(saltBytes)
+	hasher.Write([]byte(password))
+	digest := hex.EncodeToString(hasher.Sum(nil))
+
+	// Could be racy, but shouldn't really matter...
 	key := "SuperUserPassword"
+	val := "sha1$" + salt + "$" + digest
 	server.cfg.Set(key, val)
 	server.cfgUpdate <- &KeyValuePair{Key: key, Value: val}
 }
 
 // Check whether password matches the set SuperUser password.
 func (server *Server) CheckSuperUserPassword(password string) bool {
-	supwd := os.Getenv("GRUMBLE_PWD")
-	if supwd == "" {
-		supwd = "password"
+	parts := strings.Split(server.cfg.StringValue("SuperUserPassword"), "$")
+	if len(parts) != 3 {
+		return false
 	}
 
-	if password == supwd {
+	if len(parts[2]) == 0 {
+		return false
+	}
+
+	var h hash.Hash
+	switch parts[0] {
+	case "sha1":
+		h = sha1.New()
+	default:
+		// no such hash
+		return false
+	}
+
+	// salt
+	if len(parts[1]) > 0 {
+		saltBytes, err := hex.DecodeString(parts[1])
+		if err != nil {
+			server.Fatalf("Unable to decode salt: %v", err)
+		}
+		h.Write(saltBytes)
+	}
+
+	// password
+	h.Write([]byte(password))
+
+	sum := hex.EncodeToString(h.Sum(nil))
+	if parts[2] == sum {
 		return true
 	}
 
@@ -250,7 +270,6 @@ func (server *Server) handleIncomingClient(conn net.Conn) (err error) {
 		hash.Write(state.PeerCertificates[0].Raw)
 		sum := hash.Sum(nil)
 		client.certHash = hex.EncodeToString(sum)
-		log.Printf("Client Hash: " + client.certHash)
 	}
 
 	// Check whether the client's cert hash is banned
@@ -342,6 +361,7 @@ func (server *Server) UnlinkChannels(channel *Channel, other *Channel) {
 // Important control channel messages are routed through this Goroutine
 // to keep server state synchronized.
 func (server *Server) handlerLoop() {
+	regtick := time.Tick(time.Hour)
 	for {
 		select {
 		// We're done. Stop the server's event handler
@@ -389,16 +409,21 @@ func (server *Server) handlerLoop() {
 				server.ResetConfig(kvp.Key)
 			}
 
-			// Check if its time to sync the server state and re-open the log
-			if server.numLogOps >= LogOpsBeforeSync {
-				server.Print("Writing full server snapshot to disk")
-				err := server.FreezeToFile()
-				if err != nil {
-					server.Fatal(err)
-				}
-				server.numLogOps = 0
-				server.Print("Wrote full server snapshot to disk")
+		// Server registration update
+		// Tick every hour + a minute offset based on the server id.
+		case <-regtick:
+			server.RegisterPublicServer()
+		}
+
+		// Check if its time to sync the server state and re-open the log
+		if server.numLogOps >= LogOpsBeforeSync {
+			server.Print("Writing full server snapshot to disk")
+			err := server.FreezeToFile()
+			if err != nil {
+				server.Fatal(err)
 			}
+			server.numLogOps = 0
+			server.Print("Wrote full server snapshot to disk")
 		}
 	}
 }
@@ -1317,7 +1342,7 @@ func (server *Server) cleanPerLaunchData() {
 func (server *Server) Port() int {
 	port := server.cfg.IntValue("Port")
 	if port == 0 {
-		return ActivePort + int(server.Id) - 1
+		return DefaultPort + int(server.Id) - 1
 	}
 	return port
 }
@@ -1416,6 +1441,12 @@ func (server *Server) Start() (err error) {
 	server.netwg.Add(2)
 	go server.udpListenLoop()
 	go server.acceptLoop()
+
+	// Schedule a server registration update (if needed)
+	go func() {
+		time.Sleep(1 * time.Minute)
+		server.RegisterPublicServer()
+	}()
 
 	return nil
 }

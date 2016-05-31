@@ -10,13 +10,13 @@ import (
 	"crypto/tls"
 	"encoding/binary"
 	"errors"
-	"github.com/colek42/grumble/pkg/acl"
-	"github.com/colek42/grumble/pkg/cryptstate"
-	"github.com/colek42/grumble/pkg/mumbleproto"
-	"github.com/colek42/grumble/pkg/packetdata"
 	"github.com/golang/protobuf/proto"
 	"io"
 	"log"
+	"mumble.info/grumble/pkg/acl"
+	"mumble.info/grumble/pkg/cryptstate"
+	"mumble.info/grumble/pkg/mumbleproto"
+	"mumble.info/grumble/pkg/packetdata"
 	"net"
 	"runtime"
 	"time"
@@ -186,17 +186,11 @@ func (client *Client) disconnect(kicked bool) {
 		//
 		// In case of a premature disconnect, close the channel so the
 		// receiver routine can exit correctly.
-		if client.state == StateClientSentVersion {
-			client.Printf("Client Line 190")
-			//close(client.clientReady)
+		if client.state == StateClientSentVersion || client.state == StateClientAuthenticated {
+			close(client.clientReady)
 		}
 
-		if client.state == StateClientAuthenticated {
-			//close(client.clientReady)
-			client.Printf("Client Line 195")
-		}
-
-		client.Printf("Internal Disconnect")
+		client.Printf("Disconnected")
 		client.conn.Close()
 
 		client.server.updateCodecVersions(nil)
@@ -205,13 +199,11 @@ func (client *Client) disconnect(kicked bool) {
 
 // Disconnect a client (client requested or server shutdown)
 func (client *Client) Disconnect() {
-	client.Printf("Client Disconnected By Server: Requested or Shutdown")
 	client.disconnect(false)
 }
 
 // Disconnect a client (kick/ban)
 func (client *Client) ForceDisconnect() {
-	client.Printf("Client Disconnected By Server: Kick/Ban")
 	client.disconnect(true)
 }
 
@@ -234,7 +226,6 @@ func (client *Client) RejectAuth(rejectType mumbleproto.Reject_RejectType, reaso
 		Reason: reasonString,
 	})
 
-	client.Printf("Client Disconnected By Server: " + reason)
 	client.ForceDisconnect()
 }
 
