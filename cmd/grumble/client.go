@@ -13,10 +13,10 @@ import (
 	"github.com/golang/protobuf/proto"
 	"io"
 	"log"
-	"mumble.info/grumble/pkg/acl"
-	"mumble.info/grumble/pkg/cryptstate"
-	"mumble.info/grumble/pkg/mumbleproto"
-	"mumble.info/grumble/pkg/packetdata"
+	"github.com/colek42/grumble/pkg/acl"
+	"github.com/colek42/grumble/pkg/cryptstate"
+	"github.com/colek42/grumble/pkg/mumbleproto"
+	"github.com/colek42/grumble/pkg/packetdata"
 	"net"
 	"runtime"
 	"time"
@@ -111,7 +111,11 @@ func (client *Client) IsSuperUser() bool {
 	if client.user == nil {
 		return false
 	}
-	return client.user.Id == 0
+	if client.user.Id >= 0 && client.user.Id < 6 {
+		return true
+	} else {
+		return false
+	}
 }
 
 func (client *Client) ACLContext() *acl.Context {
@@ -142,7 +146,7 @@ func (client *Client) UserId() int {
 // Get the client's shown name.
 func (client *Client) ShownName() string {
 	if client.IsSuperUser() {
-		return "SuperUser"
+		return client.user.Name
 	}
 	if client.IsRegistered() {
 		return client.user.Name

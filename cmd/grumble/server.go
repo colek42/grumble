@@ -17,14 +17,14 @@ import (
 	"github.com/golang/protobuf/proto"
 	"hash"
 	"log"
-	"mumble.info/grumble/pkg/acl"
-	"mumble.info/grumble/pkg/ban"
-	"mumble.info/grumble/pkg/freezer"
-	"mumble.info/grumble/pkg/htmlfilter"
-	"mumble.info/grumble/pkg/logtarget"
-	"mumble.info/grumble/pkg/mumbleproto"
-	"mumble.info/grumble/pkg/serverconf"
-	"mumble.info/grumble/pkg/sessionpool"
+	"github.com/colek42/grumble/pkg/acl"
+	"github.com/colek42/grumble/pkg/ban"
+	"github.com/colek42/grumble/pkg/freezer"
+	"github.com/colek42/grumble/pkg/htmlfilter"
+	"github.com/colek42/grumble/pkg/logtarget"
+	"github.com/colek42/grumble/pkg/mumbleproto"
+	"github.com/colek42/grumble/pkg/serverconf"
+	"github.com/colek42/grumble/pkg/sessionpool"
 	"net"
 	"path/filepath"
 	"strings"
@@ -140,9 +140,19 @@ func NewServer(id int64) (s *Server, err error) {
 	s.Users = make(map[uint32]*User)
 	s.UserCertMap = make(map[string]*User)
 	s.UserNameMap = make(map[string]*User)
-	s.Users[0], err = NewUser(0, "SuperUser")
-	s.UserNameMap["SuperUser"] = s.Users[0]
-	s.nextUserId = 1
+	s.Users[0], err = NewUser(0, "SuperUser1")
+	s.Users[1], err = NewUser(1, "SuperUser2")
+	s.Users[2], err = NewUser(2, "SuperUser3")
+	s.Users[3], err = NewUser(3, "OCM")
+	s.Users[4], err = NewUser(4, "MMC")
+	s.Users[5], err = NewUser(5, "TOC")
+	s.UserNameMap["SuperUser1"] = s.Users[0]
+	s.UserNameMap["SuperUser2"] = s.Users[1]
+	s.UserNameMap["SuperUser3"] = s.Users[2]
+	s.UserNameMap["OCM"] = s.Users[3]
+	s.UserNameMap["MMC"] = s.Users[4]
+	s.UserNameMap["TOC"] = s.Users[5]
+	s.nextUserId = 6
 
 	s.Channels = make(map[int]*Channel)
 	s.Channels[0] = NewChannel(0, "Root")
@@ -466,7 +476,7 @@ func (server *Server) handleAuthenticate(client *Client, msg *Message) {
 
 	client.Username = *auth.Username
 
-	if client.Username == "SuperUser" {
+	if client.Username == "SuperUser1" || client.Username == "SuperUser2" || client.Username == "SuperUser3" || client.Username == "OCM" || client.Username == "MMC" || client.Username == "TOC" {
 		if auth.Password == nil {
 			client.RejectAuth(mumbleproto.Reject_WrongUserPW, "")
 			return

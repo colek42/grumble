@@ -13,8 +13,8 @@ import (
 	"database/sql"
 	"errors"
 	"log"
-	"mumble.info/grumble/pkg/acl"
-	"mumble.info/grumble/pkg/ban"
+	"github.com/colek42/grumble/pkg/acl"
+	"github.com/colek42/grumble/pkg/ban"
 	"net"
 	"os"
 	"path/filepath"
@@ -418,7 +418,7 @@ func populateUsers(server *Server, db *sql.DB) (err error) {
 			continue
 		}
 
-		if UserId == 0 {
+		if UserId == 0 || UserId == 1 || UserId == 2 || UserId == 3 || UserId == 4 || UserId == 5 {
 			server.cfg.Set("SuperUserPassword", "sha1$$"+SHA1Password)
 		}
 

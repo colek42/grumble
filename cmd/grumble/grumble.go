@@ -8,8 +8,8 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"mumble.info/grumble/pkg/blobstore"
-	"mumble.info/grumble/pkg/logtarget"
+	"github.com/colek42/grumble/pkg/blobstore"
+	"github.com/colek42/grumble/pkg/logtarget"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -208,6 +208,8 @@ func main() {
 		err = server.Start()
 		if err != nil {
 			log.Printf("Unable to start server %v: %v", server.Id, err.Error())
+		} else {
+			server.SetSuperUserPassword("password")
 		}
 	}
 
