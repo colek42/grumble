@@ -7,9 +7,9 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log"
 	"github.com/colek42/grumble/pkg/blobstore"
 	"github.com/colek42/grumble/pkg/logtarget"
-	"log"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -208,6 +208,12 @@ func main() {
 		err = server.Start()
 		if err != nil {
 			log.Printf("Unable to start server %v: %v", server.Id, err.Error())
+		} else {
+			supwd := os.Getenv("GRUMBLE_PWD")
+			if supwd == "" {
+				supwd = "password"
+			}
+			server.SetSuperUserPassword(supwd)
 		}
 	}
 

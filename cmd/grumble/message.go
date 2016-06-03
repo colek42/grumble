@@ -8,11 +8,11 @@ import (
 	"crypto/aes"
 	"crypto/tls"
 	"fmt"
+	"github.com/golang/protobuf/proto"
 	"github.com/colek42/grumble/pkg/acl"
 	"github.com/colek42/grumble/pkg/ban"
 	"github.com/colek42/grumble/pkg/freezer"
 	"github.com/colek42/grumble/pkg/mumbleproto"
-	"github.com/golang/protobuf/proto"
 	"net"
 	"time"
 )

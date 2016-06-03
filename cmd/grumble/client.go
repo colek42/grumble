@@ -10,13 +10,13 @@ import (
 	"crypto/tls"
 	"encoding/binary"
 	"errors"
+	"github.com/golang/protobuf/proto"
+	"io"
+	"log"
 	"github.com/colek42/grumble/pkg/acl"
 	"github.com/colek42/grumble/pkg/cryptstate"
 	"github.com/colek42/grumble/pkg/mumbleproto"
 	"github.com/colek42/grumble/pkg/packetdata"
-	"github.com/golang/protobuf/proto"
-	"io"
-	"log"
 	"net"
 	"runtime"
 	"time"
@@ -111,7 +111,11 @@ func (client *Client) IsSuperUser() bool {
 	if client.user == nil {
 		return false
 	}
-	return client.user.Id == 0
+	if client.user.Id >= 0 && client.user.Id < 6 {
+		return true
+	} else {
+		return false
+	}
 }
 
 func (client *Client) ACLContext() *acl.Context {
@@ -142,7 +146,7 @@ func (client *Client) UserId() int {
 // Get the client's shown name.
 func (client *Client) ShownName() string {
 	if client.IsSuperUser() {
-		return "SuperUser"
+		return client.user.Name
 	}
 	if client.IsRegistered() {
 		return client.user.Name
@@ -186,17 +190,11 @@ func (client *Client) disconnect(kicked bool) {
 		//
 		// In case of a premature disconnect, close the channel so the
 		// receiver routine can exit correctly.
-		if client.state == StateClientSentVersion {
-			client.Printf("Client Line 190")
-			//close(client.clientReady)
+		if client.state == StateClientSentVersion || client.state == StateClientAuthenticated {
+			close(client.clientReady)
 		}
 
-		if client.state == StateClientAuthenticated {
-			//close(client.clientReady)
-			client.Printf("Client Line 195")
-		}
-
-		client.Printf("Internal Disconnect")
+		client.Printf("Disconnected")
 		client.conn.Close()
 
 		client.server.updateCodecVersions(nil)
@@ -205,13 +203,11 @@ func (client *Client) disconnect(kicked bool) {
 
 // Disconnect a client (client requested or server shutdown)
 func (client *Client) Disconnect() {
-	client.Printf("Client Disconnected By Server: Requested or Shutdown")
 	client.disconnect(false)
 }
 
 // Disconnect a client (kick/ban)
 func (client *Client) ForceDisconnect() {
-	client.Printf("Client Disconnected By Server: Kick/Ban")
 	client.disconnect(true)
 }
 
@@ -234,7 +230,6 @@ func (client *Client) RejectAuth(rejectType mumbleproto.Reject_RejectType, reaso
 		Reason: reasonString,
 	})
 
-	client.Printf("Client Disconnected By Server: " + reason)
 	client.ForceDisconnect()
 }
 
