@@ -30,6 +30,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"os"
+	"strconv"
 )
 
 // The default port a Murmur server listens on
@@ -46,6 +48,22 @@ const (
 	StateClientReady
 	StateClientDead
 )
+
+var (
+	ActivePort = DefaultPort
+)
+
+func init() {
+	portStr := os.Getenv("GRUMBLE_PORT")
+	ActivePort = DefaultPort
+	if portStr != "" {
+		intPort, err := strconv.Atoi(portStr)
+		if err != nil {
+			log.Printf("Default Port could not convert %s: %+v", portStr, err)
+		}
+		ActivePort = intPort
+	}
+}
 
 type KeyValuePair struct {
 	Key   string
@@ -422,7 +440,6 @@ func (server *Server) handlerLoop() {
 		// Server registration update
 		// Tick every hour + a minute offset based on the server id.
 		case <-regtick:
-			server.RegisterPublicServer()
 		}
 
 		// Check if its time to sync the server state and re-open the log
@@ -1455,7 +1472,6 @@ func (server *Server) Start() (err error) {
 	// Schedule a server registration update (if needed)
 	go func() {
 		time.Sleep(1 * time.Minute)
-		server.RegisterPublicServer()
 	}()
 
 	return nil

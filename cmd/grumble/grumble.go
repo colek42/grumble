@@ -209,7 +209,11 @@ func main() {
 		if err != nil {
 			log.Printf("Unable to start server %v: %v", server.Id, err.Error())
 		} else {
-			server.SetSuperUserPassword("password")
+			supwd := os.Getenv("GRUMBLE_PWD")
+			if supwd == "" {
+				supwd = "password"
+			}
+			server.SetSuperUserPassword(supwd)
 		}
 	}
 
