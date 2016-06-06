@@ -1369,7 +1369,7 @@ func (server *Server) cleanPerLaunchData() {
 func (server *Server) Port() int {
 	port := server.cfg.IntValue("Port")
 	if port == 0 {
-		return DefaultPort + int(server.Id) - 1
+		return ActivePort + int(server.Id) - 1
 	}
 	return port
 }
